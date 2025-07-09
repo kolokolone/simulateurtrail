@@ -18,7 +18,8 @@ from utils import (
     adjusted_speed_minetti,
     adjusted_speed_strava,
     allure_to_v_asc,
-    allure_to_seconds
+    allure_to_seconds,
+    smooth
 )
 
 st.title("Analyse de trace GPX - Allure ajustée à la pente")
@@ -39,6 +40,8 @@ st.info(
     **Chargez simplement votre fichier GPX et entrez votre objectif de temps.**
     """
 )
+
+
 
 uploaded_file = st.file_uploader("Chargez votre fichier GPX", type=["gpx"])
 
@@ -63,7 +66,7 @@ if uploaded_file is not None:
         lat_moy = sum(lat for lat, lon in coords) / len(coords)
         lon_moy = sum(lon for lat, lon in coords) / len(coords)
 
-        m = folium.Map(location=[lat_moy, lon_moy], zoom_start=13, tiles='OpenStreetMap',attr='© OpenStreetMap contributors')
+        m = folium.Map(location=[lat_moy, lon_moy], zoom_start=13, tiles='OpenStreetMap')
         m.fit_bounds(coords)
 
         folium.PolyLine(coords, color="blue", weight=3).add_to(m)
@@ -369,9 +372,12 @@ if uploaded_file is not None and temps_espere:
 
 
     ## ALLURE INSTANTANEE
+    # L'allure instantanée donne un résultats  illisisible puisque changeant avec la moindre variation de pente
 
     paces = compute_paces(distances, elevations, flat_speed)
     paces_strava = compute_paces_strava(distances, elevations, flat_speed_strava)
+    paces = smooth(paces,4)
+    paces_strava = smooth(paces_strava,4)
     paces_str = []
     paces_str_strava = []
     for i in range(len(paces)):
@@ -381,7 +387,21 @@ if uploaded_file is not None and temps_espere:
 
     fig2 = go.Figure()
 
-    # 1. Courbe Minetti (bleu)
+        # 1. Courbe d’élévation en gris clair, remplie depuis la base, légèrement transparente (axe secondaire)
+    fig2.add_trace(go.Scatter(
+        x=distances_pace,
+        y=elevations,
+        mode='lines',
+        name='Élévation',
+        line=dict(color='lightgray'),
+        fill='tozeroy',
+        yaxis='y2',
+        hoverinfo='skip',
+        opacity=0.4,
+        hovertemplate='Distance: %{x:.2f} km<br>Élévation: %{y:.0f} m'
+    ))
+
+    # 2. Courbe Minetti (bleu)
     fig2.add_trace(go.Scatter(
         x=distances_pace,
         y=paces,
@@ -392,17 +412,20 @@ if uploaded_file is not None and temps_espere:
         hovertemplate='Distance: %{x:.2f} km<br>Allure Minetti: %{customdata}/km'
     ))
 
-    # 2. Courbe Strava (orange)
+    # 3. Courbe Strava (orange)
     fig2.add_trace(go.Scatter(
         x=distances_pace,
         y=paces_strava,
         mode='lines',
         name='Allure Strava',
-        line=dict(color='orange', dash='dash'),  # tirets pour différencier
+        line=dict(color='orange', dash='dash'),
         customdata=paces_str_strava,
         hovertemplate='Distance: %{x:.2f} km<br>Allure Strava: %{customdata}/km'
     ))
-        # Configuration générale
+
+
+
+    # Configuration générale
     fig2.update_layout(
         title="Comparaison des Allures Instantanées",
         xaxis=dict(
@@ -413,15 +436,28 @@ if uploaded_file is not None and temps_espere:
             spikedash="dot",
             spikemode="across",
         ),
-        yaxis=dict(title='Allure (mm:ss/km)', overlaying='y', side='left', autorange='reversed'),
+        yaxis=dict(
+            title='Allure (mm:ss/km)',
+            side='left',
+            autorange='reversed'
+        ),
+        yaxis2=dict(
+            title='Élévation (m)',
+            side='right',
+            overlaying='y',
+            showgrid=False
+        ),
+
         legend=dict(x=0, y=1),
         height=400,
-        dragmode= False,
-        hovermode = 'x',
+        dragmode=False,
+        hovermode='x',
         hoverdistance=100,
         spikedistance=1000,
-
     )
+
+
+
 
     with st.expander("🏃‍♂️ Afficher l'allure instantanée"):
         st.plotly_chart(fig2, use_container_width=True)

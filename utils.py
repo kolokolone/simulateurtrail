@@ -68,7 +68,7 @@ def adjusted_speed_strava(flat_speed, slope):
     v = flat_speed*(C0/Ci)
     return v
 
-""" ne sert pas pour le moment
+
 def smooth(y, box_pts=5):
     y = np.array(y)
     n = len(y)
@@ -79,7 +79,7 @@ def smooth(y, box_pts=5):
         end = min(n, i + half_window + 1)
         y_smooth[i] = np.mean(y[start:end])
     return y_smooth
-"""
+
 
 def simulate_temps_total(flat_speed, distances, elevations):
     """
@@ -338,7 +338,7 @@ def process_gpx(gpx_content):
     elevations = []
     coords = []
 
-    DISTANCE_MIN = 30  # mètres entre 2 points retenus
+    DISTANCE_MIN = 30  # mètres entre 2 points retenus, pour 
     distance_since_last_save = 0
 
     for track in gpx.tracks:
